@@ -1,0 +1,2 @@
+include LICENSE
+include tap_datadog_rum/schemas/*.json
