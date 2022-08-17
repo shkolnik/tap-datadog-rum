@@ -6,39 +6,45 @@ from singer import utils, metadata
 from singer.catalog import Catalog, CatalogEntry
 from singer.schema import Schema
 
+import dateutil
 
-REQUIRED_CONFIG_KEYS = ["start_date", "username", "password"]
+
+from tap_datadog_rum.api_client import RUMApiClient
+from tap_datadog_rum.schema_builder import generate_schema_from_events
+
+REQUIRED_CONFIG_KEYS = ["api_key", "app_key", "start_date"]
 LOGGER = singer.get_logger()
 
 
-def get_abs_path(path):
-    return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
+STREAM_QUERIES = {
+    'front_end_crashes': '@context.browser_reload_required:true env:production service:zenpayroll',
+}
 
 
-def load_schemas():
-    """ Load schemas from schemas folder """
+def generate_all_schemas(client, state):
     schemas = {}
-    for filename in os.listdir(get_abs_path('schemas')):
-        path = get_abs_path('schemas') + '/' + filename
-        file_raw = filename.replace('.json', '')
-        with open(path) as file:
-            schemas[file_raw] = Schema.from_dict(json.load(file))
+    for stream_id, query in STREAM_QUERIES.items():
+        cursor_from_state = state.get(stream_id)
+        events, _cursor = client.fetch_events(query, cursor_from_state)
+        schemas[stream_id] = Schema.from_dict(generate_schema_from_events(events))
     return schemas
 
-
-def discover():
-    raw_schemas = load_schemas()
+def schemas_to_catalog(schemas):
     streams = []
-    for stream_id, schema in raw_schemas.items():
+    for stream_id, schema in schemas.items():
         # TODO: populate any metadata and stream's key properties here..
-        stream_metadata = []
-        key_properties = []
+        stream_metadata = [{
+            'metadata': {
+                'selected': True,
+            },
+            'breadcrumb': []
+        }]
         streams.append(
             CatalogEntry(
                 tap_stream_id=stream_id,
                 stream=stream_id,
                 schema=schema,
-                key_properties=key_properties,
+                key_properties=['event_id'],
                 metadata=stream_metadata,
                 replication_key=None,
                 is_view=None,
@@ -51,40 +57,35 @@ def discover():
         )
     return Catalog(streams)
 
+def discover(client, state):
+    all_schemas = generate_all_schemas(client, state)
+    return schemas_to_catalog(all_schemas)
 
-def sync(config, state, catalog):
+
+def sync(client, state, catalog):
     """ Sync data from tap source """
+
     # Loop over selected streams in catalog
     for stream in catalog.get_selected_streams(state):
         LOGGER.info("Syncing stream:" + stream.tap_stream_id)
 
-        bookmark_column = stream.replication_key
-        is_sorted = True  # TODO: indicate whether data is sorted ascending on bookmark value
-
         singer.write_schema(
             stream_name=stream.tap_stream_id,
-            schema=stream.schema,
+            schema=stream.schema.to_dict(),
             key_properties=stream.key_properties,
         )
 
-        # TODO: delete and replace this inline function with your own data retrieval process:
-        tap_data = lambda: [{"id": x, "name": "row${x}"} for x in range(1000)]
+        query = STREAM_QUERIES.get(stream.tap_stream_id)
+        state_cursor = state.get(stream.tap_stream_id)
 
-        max_bookmark = None
-        for row in tap_data():
-            # TODO: place type conversions or transformations here
+        events, next_cursor = client.fetch_events(query, state_cursor)
+        while len(events) > 0:
+            singer.write_records(stream.tap_stream_id, events)
 
-            # write one or more rows to the stream:
-            singer.write_records(stream.tap_stream_id, [row])
-            if bookmark_column:
-                if is_sorted:
-                    # update bookmark to latest value
-                    singer.write_state({stream.tap_stream_id: row[bookmark_column]})
-                else:
-                    # if data unsorted, save max value until end of writes
-                    max_bookmark = max(max_bookmark, row[bookmark_column])
-        if bookmark_column and not is_sorted:
-            singer.write_state({stream.tap_stream_id: max_bookmark})
+            state[stream.tap_stream_id] = next_cursor
+            singer.write_state(state)
+
+            events, next_cursor = client.fetch_events(query, next_cursor)
     return
 
 
@@ -92,18 +93,22 @@ def sync(config, state, catalog):
 def main():
     # Parse command line arguments
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+    api_key = args.config['api_key']
+    app_key = args.config['app_key']
+    start_date = dateutil.parser.parse(args.config['start_date'])
+    client = RUMApiClient(api_key, app_key, start_date)
 
     # If discover flag was passed, run discovery mode and dump output to stdout
     if args.discover:
-        catalog = discover()
+        catalog = discover(client, args.state)
         catalog.dump()
     # Otherwise run in sync mode
     else:
         if args.catalog:
             catalog = args.catalog
         else:
-            catalog = discover()
-        sync(args.config, args.state, catalog)
+            catalog = discover(client, args.state)
+        sync(client, args.state, catalog)
 
 
 if __name__ == "__main__":

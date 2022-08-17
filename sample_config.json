@@ -1,5 +1,5 @@
 {
-  "username": "my_username",
-  "password": "my_password",
-  "start_date": "2017-01-01T00:00:00Z"
+  "api_key": "XXX",
+  "app_key": "XXX",
+  "start_date": "2020-08-15T00:00:00Z"
 }
