@@ -8,7 +8,6 @@ from singer.schema import Schema
 
 import dateutil
 
-
 from tap_datadog_rum.api_client import RUMApiClient
 from tap_datadog_rum.schema_builder import generate_schema_from_events
 
@@ -16,23 +15,20 @@ REQUIRED_CONFIG_KEYS = ["api_key", "app_key", "start_date"]
 LOGGER = singer.get_logger()
 
 
-STREAM_QUERIES = {
-    'front_end_crashes': '@context.browser_reload_required:true env:production service:zenpayroll',
-}
-
-
-def generate_all_schemas(client, state):
+def generate_all_schemas(client, config, state):
     schemas = {}
-    for stream_id, query in STREAM_QUERIES.items():
+    for stream_id, stream_config in config['streams'].items():
+        query = stream_config['query']
+        config_attribute_mapping = stream_config.get('attribute_mapping') or {}
         cursor_from_state = state.get(stream_id)
-        events, _cursor = client.fetch_events(query, cursor_from_state)
+
+        events, _cursor = client.fetch_events(query, config_attribute_mapping, cursor_from_state)
         schemas[stream_id] = Schema.from_dict(generate_schema_from_events(events))
     return schemas
 
 def schemas_to_catalog(schemas):
     streams = []
     for stream_id, schema in schemas.items():
-        # TODO: populate any metadata and stream's key properties here..
         stream_metadata = [{
             'metadata': {
                 'selected': True,
@@ -57,12 +53,12 @@ def schemas_to_catalog(schemas):
         )
     return Catalog(streams)
 
-def discover(client, state):
-    all_schemas = generate_all_schemas(client, state)
+def discover(client, config, state):
+    all_schemas = generate_all_schemas(client, config, state)
     return schemas_to_catalog(all_schemas)
 
 
-def sync(client, state, catalog):
+def sync(client, config, state, catalog):
     """ Sync data from tap source """
 
     # Loop over selected streams in catalog
@@ -75,17 +71,19 @@ def sync(client, state, catalog):
             key_properties=stream.key_properties,
         )
 
-        query = STREAM_QUERIES.get(stream.tap_stream_id)
+        stream_config = config['streams'][stream.tap_stream_id]
+        query = stream_config['query']
+        config_attribute_mapping = stream_config.get('attribute_mapping') or {}
         state_cursor = state.get(stream.tap_stream_id)
 
-        events, next_cursor = client.fetch_events(query, state_cursor)
+        events, next_cursor = client.fetch_events(query, config_attribute_mapping, state_cursor)
         while len(events) > 0:
             singer.write_records(stream.tap_stream_id, events)
 
             state[stream.tap_stream_id] = next_cursor
             singer.write_state(state)
 
-            events, next_cursor = client.fetch_events(query, next_cursor)
+            events, next_cursor = client.fetch_events(query, config_attribute_mapping, next_cursor)
     return
 
 
@@ -100,15 +98,15 @@ def main():
 
     # If discover flag was passed, run discovery mode and dump output to stdout
     if args.discover:
-        catalog = discover(client, args.state)
+        catalog = discover(client, args.config, args.state)
         catalog.dump()
     # Otherwise run in sync mode
     else:
         if args.catalog:
             catalog = args.catalog
         else:
-            catalog = discover(client, args.state)
-        sync(client, args.state, catalog)
+            catalog = discover(client, args.config, args.state)
+        sync(client, args.config, args.state, catalog)
 
 
 if __name__ == "__main__":
