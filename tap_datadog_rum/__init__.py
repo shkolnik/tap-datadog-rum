@@ -9,21 +9,32 @@ from singer.schema import Schema
 import dateutil
 
 from tap_datadog_rum.api_client import RUMApiClient
-from tap_datadog_rum.schema_builder import generate_schema_from_events
+from tap_datadog_rum.schema_builder import SchemaBuilderWithDateSupport
 
 REQUIRED_CONFIG_KEYS = ["api_key", "app_key", "start_date"]
+MAX_EVENTS_FOR_SCHEMA_INFERENCE = 2000
 LOGGER = singer.get_logger()
 
+def generate_schema(client, query, config_attribute_mapping, start_cursor = None):
+    builder = SchemaBuilderWithDateSupport()
+    event_count = 0
+    next_cursor = start_cursor
+
+    while event_count == 0 or (event_count < MAX_EVENTS_FOR_SCHEMA_INFERENCE and len(events) > 0):
+        events, next_cursor = client.fetch_events(query, config_attribute_mapping, next_cursor)
+        for event in events:
+            builder.add_object(event)
+        event_count = event_count + len(events)
+
+    return Schema.from_dict(builder.to_schema())
 
 def generate_all_schemas(client, config, state):
     schemas = {}
     for stream_id, stream_config in config['streams'].items():
         query = stream_config['query']
         config_attribute_mapping = stream_config.get('attribute_mapping') or {}
-        cursor_from_state = state.get(stream_id)
-
-        events, _cursor = client.fetch_events(query, config_attribute_mapping, cursor_from_state)
-        schemas[stream_id] = Schema.from_dict(generate_schema_from_events(events))
+        start_cursor = state.get(stream_id)
+        schemas[stream_id] = generate_schema(client, query, config_attribute_mapping, start_cursor)
     return schemas
 
 def schemas_to_catalog(schemas):

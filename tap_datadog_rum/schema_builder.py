@@ -1,6 +1,18 @@
 from datetime import datetime
 from genson import TypedSchemaStrategy, SchemaBuilder
 
+DATE_FORMAT_WITH_MILLIS = "%Y-%m-%dT%H:%M:%S.%f%z"
+DATE_FORMAT_NO_MILLIS = "%Y-%m-%dT%H:%M:%S%z"
+
+def is_formatted_date(str, format):
+    try:
+        date_time_obj = datetime.strptime(str, format)
+        if isinstance(date_time_obj, datetime):
+            return True
+        else:
+            return False
+    except (TypeError, ValueError) as exception:
+        return False
 
 # Checks for strings that look like ISO datetime and includes a date-time format
 # on the corresponding properties in the JSON Schema.
@@ -19,15 +31,11 @@ class CustomDateTime(TypedSchemaStrategy):
     @classmethod
     def match_object(self, obj):
         super().match_object(obj)
-        try:
-            date_time_obj = datetime.strptime(obj, "%Y-%m-%dT%H:%M:%S.%f%z")
-            if isinstance(date_time_obj, datetime):
-                return True
-            else:
-                return False
-        except (TypeError, ValueError) as exception:
-            # print(exception)
-            return False
+        if type(obj) != str:
+          return False
+
+        return is_formatted_date(obj, DATE_FORMAT_WITH_MILLIS) or \
+                is_formatted_date(obj, DATE_FORMAT_NO_MILLIS)
 
     def to_schema(self):
         schema = super().to_schema()
@@ -39,11 +47,3 @@ class CustomDateTime(TypedSchemaStrategy):
 class SchemaBuilderWithDateSupport(SchemaBuilder):
     """ detects & labels date-time formatted strings """
     EXTRA_STRATEGIES = (CustomDateTime, )
-
-
-def generate_schema_from_events(events):
-    builder = SchemaBuilderWithDateSupport()
-    for event in events:
-        builder.add_object(event)
-
-    return builder.to_schema()
