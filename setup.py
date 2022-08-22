@@ -7,12 +7,12 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="tap-datadog-rum",
-    version="0.1.0",
+    version="0.1.1",
     description="Singer.io tap for extracting events from the Datadog Real User Monitoring (RUM) API",
     long_description=long_description,
     long_description_content_type='text/markdown',
     author="James Shkolnik (js@gusto.com)",
-    url="http://github.com/Gusto/tap-datadog-rum",
+    url="http://github.com/shkolnik/tap-datadog-rum",
     classifiers=["Programming Language :: Python :: 3 :: Only"],
     py_modules=["tap_datadog_rum"],
     install_requires=[
