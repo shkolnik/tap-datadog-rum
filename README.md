@@ -1,17 +1,29 @@
 # tap-datadog-rum
 
-This is a [Singer](https://singer.io) tap that produces JSON-formatted data
-following the [Singer
-spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md).
+Singer Tap to pull raw event data from Datadog's Real User Monitoring (RUM) system.
 
-This tap:
+* Supports 1 or more streams configured using a Datadog RUM event query (copy and paste from DD search UI).
+* Supports extraction of custom fields (from event context) based on a user-configured mapping.
+* Infers event schemas using the [Genson](https://github.com/wolverdude/GenSON) library.
+* Uses cursor based fetching with cursor stored in Singer state between runs.
+* A given run of the tap will end once all existing events have been extracted.
 
-- Pulls raw data from [FIXME](http://example.com)
-- Extracts the following resources:
-  - [FIXME](http://example.com)
-- Outputs the schema for each resource
-- Incrementally pulls data based on the input state
-
----
-
-Copyright &copy; 2018 Stitch
+### Example Configuration
+```json
+{
+  "api_key": "DD_API_KEY_SECRET",
+  "app_key": "DD_APP_KEY_SECRET",
+  "start_date": "2022-08-15T00:00:00Z",
+  "streams": {
+    "front_end_crashes": {
+      "query": "env:production @context.browser_reload_required:true",
+      "attribute_mapping": {
+        "company_id": "attributes.attributes.context.company_id",
+        "error_presentation_style": "attributes.attributes.context.error_presentation_style",
+        "error_user_message": "attributes.attributes.context.user_message",
+        "team": "attributes.attributes.context.team"
+      }
+    }
+  }
+}
+```

@@ -1,23 +1,15 @@
 {
-  "api_key": "XXX",
-  "app_key": "XXX",
+  "api_key": "DD_API_KEY_SECRET",
+  "app_key": "DD_APP_KEY_SECRET",
   "start_date": "2022-08-15T00:00:00Z",
   "streams": {
     "front_end_crashes": {
-      "query": "@context.browser_reload_required:true env:production service:zenpayroll",
+      "query": "env:production @context.browser_reload_required:true",
       "attribute_mapping": {
-        "browser_reload_required": "attributes.attributes.context.browser_reload_required",
         "company_id": "attributes.attributes.context.company_id",
         "error_presentation_style": "attributes.attributes.context.error_presentation_style",
         "error_user_message": "attributes.attributes.context.user_message",
-        "graphql_operation_name": "attributes.attributes.context.graphql_operation_name",
-        "response_status_code": "attributes.attributes.context.response_status",
-        "response_status_text": "attributes.attributes.context.response_status_text",
-        "team": "attributes.attributes.context.team",
-        "user_2fa_active": "attributes.attributes.usr.second_factor_active",
-        "user_role_id": "attributes.attributes.context.user_role_id",
-        "user_role_type": "attributes.attributes.context.user_role_type",
-        "view_is_nonsensitive_page": "attributes.attributes.context.on_nonsensitive_page"
+        "team": "attributes.attributes.context.team"
       }
     }
   }
