@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from datadog_api_client import ApiClient, Configuration
 from datadog_api_client.exceptions import ApiAttributeError
@@ -24,7 +24,7 @@ DEFAULT_ATTRIBUTE_MAPPINGS = {
     'event_timestamp': 'attributes.timestamp',
     'event_type': 'attributes.attributes.type',
     'issue_age': 'attributes.attributes.issue.age',
-    'issue_first_seen': 'attributes.attributes.issue.first_seen',
+    'issue_first_seen': 'issue_first_seen',
     'issue_id': 'attributes.attributes.issue.id',
     'os_name': 'attributes.attributes.os.name',
     'os_version_major': 'attributes.attributes.os.version_major',
@@ -69,8 +69,13 @@ def tags_to_dict(tags):
 
 def format_event(event, config_attribute_mappings):
     event_dict = event.to_dict()
-    event_dict['attributes']['tags'] = tags_to_dict(
-        event_dict['attributes']['tags'])
+    event_dict['attributes']['tags'] = tags_to_dict(event_dict['attributes']['tags'])
+
+    # Convert issue_first_seen value from numeric timestamp to ISO8601
+    issue_first_seen_ts = get_nested_attr(event_dict, 'attributes.attributes.issue.first_seen')
+    if issue_first_seen_ts:
+        dt = datetime.fromtimestamp(issue_first_seen_ts / 1000, tz=timezone.utc)
+        event_dict['issue_first_seen'] = dt.isoformat()
 
     attribute_mappings = {**DEFAULT_ATTRIBUTE_MAPPINGS, **config_attribute_mappings}
     formatted = {}
