@@ -43,7 +43,37 @@ class CustomDateTime(TypedSchemaStrategy):
         schema['format'] = self.format
         return schema
 
+# Consolidate nullable type definitions from the more verbose default form:
+#       {'anyOf': [{'type': ['null', 'string'], 'format': 'date-time'}]}
+# to a more concise form:
+#       {"format": "date-time", "type": ["null", "string"]}
+def abbreviate_nullable_types(properties):
+    for property in properties:
+        any_of = properties[property].get('anyOf')
+        if any_of is None or not type(any_of) is list:
+            continue
+        if len(any_of) != 2:
+            continue
+        if not {'type': 'null'} in any_of:
+            continue
+
+        # Delete the null type definition and the real one is left
+        del any_of[any_of.index({'type': 'null'})]
+        real_def = any_of[0]
+
+        # Ensure type attribute is a list
+        if not type(real_def.get('type')) == list:
+            real_def['type'] = [real_def.get('type')]
+
+        real_def['type'].append('null')
+        real_def['type'].sort()
+        properties[property] = real_def
 
 class SchemaBuilderWithDateSupport(SchemaBuilder):
     """ detects & labels date-time formatted strings """
     EXTRA_STRATEGIES = (CustomDateTime, )
+
+    def to_schema(self):
+        schema = super().to_schema()
+        abbreviate_nullable_types(schema['properties'])
+        return schema
