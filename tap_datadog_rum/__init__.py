@@ -43,6 +43,7 @@ def schemas_to_catalog(schemas):
         stream_metadata = [{
             'metadata': {
                 'selected': True,
+                'replication-method': 'INCREMENTAL',
             },
             'breadcrumb': []
         }]
@@ -59,7 +60,7 @@ def schemas_to_catalog(schemas):
                 table=None,
                 row_count=None,
                 stream_alias=None,
-                replication_method=None,
+                replication_method='INCREMENTAL',
             )
         )
     return Catalog(streams)
@@ -111,6 +112,7 @@ def main():
     if args.discover:
         catalog = discover(client, args.config, args.state)
         catalog.dump()
+        print('')
     # Otherwise run in sync mode
     else:
         if args.catalog:
