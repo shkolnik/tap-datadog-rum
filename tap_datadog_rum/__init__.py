@@ -12,7 +12,7 @@ from tap_datadog_rum.api_client import RUMApiClient
 from tap_datadog_rum.schema_builder import SchemaBuilderWithDateSupport
 
 REQUIRED_CONFIG_KEYS = ["api_key", "app_key", "start_date"]
-MAX_EVENTS_FOR_SCHEMA_INFERENCE = 2000
+MAX_EVENTS_FOR_SCHEMA_INFERENCE = 3000
 LOGGER = singer.get_logger()
 
 def generate_schema(client, query, config_attribute_mapping, start_cursor = None):
@@ -21,7 +21,7 @@ def generate_schema(client, query, config_attribute_mapping, start_cursor = None
     next_cursor = start_cursor
 
     while event_count == 0 or (event_count < MAX_EVENTS_FOR_SCHEMA_INFERENCE and len(events) > 0):
-        events, next_cursor = client.fetch_events(query, config_attribute_mapping, next_cursor)
+        events, next_cursor = client.fetch_events(query, config_attribute_mapping, next_cursor, True)
         for event in events:
             builder.add_object(event)
         event_count = event_count + len(events)

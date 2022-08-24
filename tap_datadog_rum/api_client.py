@@ -38,6 +38,7 @@ DEFAULT_ATTRIBUTE_MAPPINGS = {
     'user_id': 'attributes.attributes.usr.id',
     'view_id': 'attributes.attributes.view.id',
     'view_name': 'attributes.attributes.view.name',
+    'view_referrer': 'attributes.attributes.view.referrer',
     'view_url_host': 'attributes.attributes.view.url_host',
     'view_url_path_group': 'attributes.attributes.view.url_path_group',
     'view_url_path': 'attributes.attributes.view.url_path',
@@ -98,14 +99,14 @@ class RUMApiClient:
         self.configuration.api_key["appKeyAuth"] = app_key
         self.start_date = start_date
 
-    def fetch_events(self, query, config_attribute_mappings, cursor = None):
+    def fetch_events(self, query, config_attribute_mappings, cursor = None, newest_first = False):
         with ApiClient(self.configuration) as api_client:
             api_instance = RUMApi(api_client)
             params = {
                 'filter_query': query,
                 'filter_from': self.start_date,
                 'page_limit': PAGE_SIZE,
-                'sort': 'timestamp'
+                'sort': '-timestamp' if newest_first else 'timestamp'
             }
             if cursor:
                 params['page_cursor'] = cursor
