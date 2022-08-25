@@ -69,6 +69,14 @@ def abbreviate_nullable_types(properties):
         real_def['type'].sort()
         properties[property] = real_def
 
+# If a field was present but always null in the sample set assume it's a string.
+#   Convert {'type': 'null'} to {'type': ['null', 'string']}
+def default_null_types_to_string(properties):
+    for property_name in properties:
+        property = properties[property_name]
+        if property.get('type') in ['null', ['null']]:
+            property['type'] = ['null', 'string']
+
 class SchemaBuilderWithDateSupport(SchemaBuilder):
     """ detects & labels date-time formatted strings """
     EXTRA_STRATEGIES = (CustomDateTime, )
@@ -76,4 +84,5 @@ class SchemaBuilderWithDateSupport(SchemaBuilder):
     def to_schema(self):
         schema = super().to_schema()
         abbreviate_nullable_types(schema['properties'])
+        default_null_types_to_string(schema['properties'])
         return schema

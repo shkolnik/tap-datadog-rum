@@ -12,7 +12,6 @@ DEFAULT_ATTRIBUTE_MAPPINGS = {
     'app_env': 'attributes.tags.env',
     'app_version': 'attributes.tags.version',
     'browser_name': 'attributes.attributes.browser.name',
-    'browser_reload_required': 'attributes.attributes.context.browser_reload_required',
     'browser_useragent': 'attributes.attributes.session.useragent',
     'browser_version_major': 'attributes.attributes.browser.version_major',
     'browser_version': 'attributes.attributes.browser.version',
