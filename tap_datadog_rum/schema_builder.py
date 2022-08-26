@@ -92,6 +92,7 @@ def make_all_types_nullable(properties):
         if not 'null' in json_type:
             json_type.append('null')
             json_type.sort
+            property['type'] = json_type
 
 class SchemaBuilderWithDateSupport(SchemaBuilder):
     """ detects & labels date-time formatted strings """
