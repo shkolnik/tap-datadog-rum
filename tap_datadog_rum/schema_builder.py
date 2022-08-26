@@ -77,6 +77,22 @@ def default_null_types_to_string(properties):
         if property.get('type') in ['null', ['null']]:
             property['type'] = ['null', 'string']
 
+def make_all_types_nullable(properties):
+    for property_name in properties:
+        property = properties[property_name]
+
+        try:
+            json_type = property['type']
+        except KeyError:
+            continue
+
+        if type(json_type) != list:
+            json_type = [json_type]
+
+        if not 'null' in json_type:
+            json_type.append('null')
+            json_type.sort
+
 class SchemaBuilderWithDateSupport(SchemaBuilder):
     """ detects & labels date-time formatted strings """
     EXTRA_STRATEGIES = (CustomDateTime, )
@@ -85,4 +101,5 @@ class SchemaBuilderWithDateSupport(SchemaBuilder):
         schema = super().to_schema()
         abbreviate_nullable_types(schema['properties'])
         default_null_types_to_string(schema['properties'])
+        make_all_types_nullable(schema['properties'])
         return schema
