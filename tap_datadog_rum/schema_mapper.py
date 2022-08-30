@@ -45,6 +45,12 @@ def cooerce_string(val):
   if val is None:
     return None
 
+  if type(val) == float:
+    str_val = str(val)
+    if str_val.endswith('.0'):
+      str_val = str_val[:-2]
+    return str_val
+
   if type(val) == datetime:
     return cooerce_datetime(val)
 
@@ -148,12 +154,6 @@ def tags_to_dict(tags):
 def format_event(event, attribute_mappings):
     event_dict = event.to_dict()
     event_dict['attributes']['tags'] = tags_to_dict(event_dict['attributes']['tags'])
-
-    # Convert issue_first_seen value from numeric timestamp to ISO8601
-    # issue_first_seen_ts = get_nested_attr(event_dict, 'attributes.attributes.issue.first_seen')
-    # if issue_first_seen_ts:
-    #     dt = datetime.fromtimestamp(issue_first_seen_ts / 1000, tz=timezone.utc)
-    #     event_dict['issue_first_seen'] = dt.isoformat()
 
     formatted = {}
     for attr_name, (attr_type, attr_path) in attribute_mappings.items():
