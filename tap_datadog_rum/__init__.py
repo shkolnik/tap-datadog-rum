@@ -1,40 +1,23 @@
 #!/usr/bin/env python3
-import os
-import json
+
 import singer
-from singer import utils, metadata
+from singer import utils
 from singer.catalog import Catalog, CatalogEntry
-from singer.schema import Schema
 
 import dateutil
 
 from tap_datadog_rum.api_client import RUMApiClient
-from tap_datadog_rum.schema_builder import SchemaBuilderWithDateSupport
+from tap_datadog_rum.schema_mapper import SchemaMapper
 
 REQUIRED_CONFIG_KEYS = ["api_key", "app_key", "start_date"]
 MAX_EVENTS_FOR_SCHEMA_INFERENCE = 3000
 LOGGER = singer.get_logger()
 
-def generate_schema(client, query, config_attribute_mapping, start_cursor = None):
-    builder = SchemaBuilderWithDateSupport()
-    event_count = 0
-    next_cursor = start_cursor
-
-    while event_count == 0 or (event_count < MAX_EVENTS_FOR_SCHEMA_INFERENCE and len(events) > 0):
-        events, next_cursor = client.fetch_events(query, config_attribute_mapping, next_cursor, True)
-        for event in events:
-            builder.add_object(event)
-        event_count = event_count + len(events)
-
-    return Schema.from_dict(builder.to_schema())
-
-def generate_all_schemas(client, config, state):
+def generate_all_schemas(config):
     schemas = {}
     for stream_id, stream_config in config['streams'].items():
-        query = stream_config['query']
         config_attribute_mapping = stream_config.get('attribute_mapping') or {}
-        start_cursor = state.get(stream_id)
-        schemas[stream_id] = generate_schema(client, query, config_attribute_mapping, start_cursor)
+        schemas[stream_id] = SchemaMapper(config_attribute_mapping).to_schema()
     return schemas
 
 def schemas_to_catalog(schemas):
@@ -65,8 +48,8 @@ def schemas_to_catalog(schemas):
         )
     return Catalog(streams)
 
-def discover(client, config, state):
-    all_schemas = generate_all_schemas(client, config, state)
+def discover(config):
+    all_schemas = generate_all_schemas(config)
     return schemas_to_catalog(all_schemas)
 
 
@@ -86,11 +69,14 @@ def sync(client, config, state, catalog):
         stream_config = config['streams'][stream.tap_stream_id]
         query = stream_config['query']
         config_attribute_mapping = stream_config.get('attribute_mapping') or {}
+        schema_mapper = SchemaMapper(config_attribute_mapping)
         state_cursor = state.get(stream.tap_stream_id)
 
         events, next_cursor = client.fetch_events(query, config_attribute_mapping, state_cursor)
         while len(events) > 0:
-            singer.write_records(stream.tap_stream_id, events)
+            mapped_events = schema_mapper.map_events(events)
+
+            singer.write_records(stream.tap_stream_id, mapped_events)
 
             state[stream.tap_stream_id] = next_cursor
             singer.write_state(state)
@@ -110,7 +96,7 @@ def main():
 
     # If discover flag was passed, run discovery mode and dump output to stdout
     if args.discover:
-        catalog = discover(client, args.config, args.state)
+        catalog = discover(args.config)
         catalog.dump()
         print('')
     # Otherwise run in sync mode
@@ -118,7 +104,7 @@ def main():
         if args.catalog:
             catalog = args.catalog
         else:
-            catalog = discover(client, args.config, args.state)
+            catalog = discover(args.config)
         sync(client, args.config, args.state, catalog)
 
 

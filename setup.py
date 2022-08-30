@@ -7,7 +7,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="tap-datadog-rum",
-    version="0.6.2",
+    version="0.7.0",
     description="Singer.io tap for extracting events from the Datadog Real User Monitoring (RUM) API",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -19,8 +19,6 @@ setup(
         "singer-python",
         "datadog-api-client>=2.2",
         "datadog-api-client<3",
-        "genson>=1.2.2",
-        "genson<2.0",
     ],
     entry_points="""
     [console_scripts]
