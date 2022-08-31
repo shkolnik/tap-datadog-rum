@@ -15,8 +15,8 @@ def list_events_with_retries(client, params):
             return api_instance.list_rum_events(**params)
         except ApiException as err:
             my_err = err
-            if err.status != 429: # Datadog returns 429 for rate limit
-                raise err # Re-raise anything other than a rate limit
+            if err.status < 500 and err.status != 429: # Datadog returns 429 for rate limit
+                raise err # Re-raise anything other than a rate limit or 500
 
             try:
                 rate_limit_reset_sec = int(err.headers['x-ratelimit-reset'])
