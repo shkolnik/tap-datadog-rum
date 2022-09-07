@@ -5,11 +5,11 @@
   "streams": {
     "front_end_crashes": {
       "query": "env:production @context.browser_reload_required:true",
+      "max_batch_size": 500000,
       "attribute_mapping": {
-        "company_id": "attributes.attributes.context.company_id",
-        "error_presentation_style": "attributes.attributes.context.error_presentation_style",
-        "error_user_message": "attributes.attributes.context.user_message",
-        "team": "attributes.attributes.context.team"
+        "catastrophic": ["boolean", "attributes.attributes.context.catastrophic"],
+        "company_id": ["string", "attributes.attributes.context.company_id"],
+        "team": ["string", "attributes.attributes.context.team"]
       }
     }
   }

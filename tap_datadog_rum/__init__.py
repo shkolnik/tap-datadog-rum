@@ -68,12 +68,16 @@ def sync(client, config, state, catalog):
 
         stream_config = config['streams'][stream.tap_stream_id]
         query = stream_config['query']
+        max_batch_size = stream_config.get('max_batch_size', 0)
         config_attribute_mapping = stream_config.get('attribute_mapping') or {}
+
         schema_mapper = SchemaMapper(config_attribute_mapping)
         state_cursor = state.get(stream.tap_stream_id)
+        fetched_events_count = 0
 
         events, next_cursor = client.fetch_events(query, config_attribute_mapping, state_cursor)
-        while len(events) > 0:
+        while len(events) > 0 and (max_batch_size == 0 or max_batch_size > fetched_events_count):
+            fetched_events_count += len(events)
             mapped_events = schema_mapper.map_events(events)
 
             singer.write_records(stream.tap_stream_id, mapped_events)
