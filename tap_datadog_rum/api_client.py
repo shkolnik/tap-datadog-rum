@@ -2,7 +2,7 @@ from time import sleep
 import sys
 
 from datadog_api_client import ApiClient, Configuration
-from datadog_api_client.exceptions import ApiAttributeError, ApiException
+from datadog_api_client.exceptions import ApiAttributeError
 from datadog_api_client.v2.api.rum_api import RUMApi
 
 PAGE_SIZE = 100
@@ -13,17 +13,20 @@ def list_events_with_retries(client, params):
     for _prev_tries in range(0, MAX_RETRIES):
         try:
             return api_instance.list_rum_events(**params)
-        except ApiException as err:
+        except Exception as err:
             my_err = err
-            if err.status < 500 and err.status != 429: # Datadog returns 429 for rate limit
-                raise err # Re-raise anything other than a rate limit or 500
 
             try:
                 rate_limit_reset_sec = int(err.headers['x-ratelimit-reset'])
-            except (KeyError, ValueError):
+            except (KeyError, ValueError, AttributeError):
                 rate_limit_reset_sec = 30
 
-            print(f'Datadog rate limit reached, sleeping for {rate_limit_reset_sec}s', file=sys.stderr)
+            if hasattr(err, 'status') and err.status == 429: # Datadog returns 429 for rate limit
+                print(f'Datadog rate limit reached, sleeping for {rate_limit_reset_sec}s', file=sys.stderr)
+            else:
+                print(err)
+                print(f'An error occurred while fetching records from Datadog. Retrying in {rate_limit_reset_sec}s.', file=sys.stderr)
+
             sleep(rate_limit_reset_sec)
 
     raise 'Still hitting Datadog rate limit after all retries exhausted'
