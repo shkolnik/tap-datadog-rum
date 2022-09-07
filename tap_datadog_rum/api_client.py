@@ -8,7 +8,7 @@ from datadog_api_client.v2.api.rum_api import RUMApi
 DEFAULT_PAGE_SIZE = 1000
 MAX_RETRIES = 5
 
-def list_events_with_retries(client, params):
+def list_events_with_retries(client, params, logger):
     api_instance = RUMApi(client)
     for _prev_tries in range(0, MAX_RETRIES):
         try:
@@ -22,17 +22,17 @@ def list_events_with_retries(client, params):
                 rate_limit_reset_sec = 30
 
             if hasattr(err, 'status') and err.status == 429: # Datadog returns 429 for rate limit
-                print(f'Datadog rate limit reached, sleeping for {rate_limit_reset_sec}s', file=sys.stderr)
+                logger.info(f'Datadog rate limit reached, sleeping for {rate_limit_reset_sec}s')
             else:
-                print(err)
-                print(f'An error occurred while fetching records from Datadog. Retrying in {rate_limit_reset_sec}s.', file=sys.stderr)
+                logger.warn(f'An error occurred while fetching records from Datadog. Retrying in {rate_limit_reset_sec}s.')
 
             sleep(rate_limit_reset_sec)
 
     raise 'Still hitting Datadog rate limit after all retries exhausted'
 
 class RUMApiClient:
-    def __init__(self, api_key, app_key, start_date, page_size):
+    def __init__(self, logger, api_key, app_key, start_date, page_size):
+        self.logger = logger
         self.configuration = Configuration()
         self.configuration.api_key["apiKeyAuth"] = api_key
         self.configuration.api_key["appKeyAuth"] = app_key
@@ -50,7 +50,7 @@ class RUMApiClient:
             if cursor:
                 params['page_cursor'] = cursor
 
-            response = list_events_with_retries(api_client, params)
+            response = list_events_with_retries(api_client, params, self.logger)
 
             try:
                 next_cursor = response.meta.page.after
