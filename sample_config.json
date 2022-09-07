@@ -2,6 +2,7 @@
   "api_key": "DD_API_KEY_SECRET",
   "app_key": "DD_APP_KEY_SECRET",
   "start_date": "2022-08-15T00:00:00Z",
+  "page_size": 1000,
   "streams": {
     "front_end_crashes": {
       "query": "env:production @context.browser_reload_required:true",

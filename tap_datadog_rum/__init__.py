@@ -96,7 +96,8 @@ def main():
     api_key = args.config['api_key']
     app_key = args.config['app_key']
     start_date = dateutil.parser.parse(args.config['start_date'])
-    client = RUMApiClient(api_key, app_key, start_date)
+    page_size = args.config.get('page_size')
+    client = RUMApiClient(api_key, app_key, start_date, page_size)
 
     # If discover flag was passed, run discovery mode and dump output to stdout
     if args.discover:
